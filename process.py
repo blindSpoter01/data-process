@@ -16,14 +16,14 @@ class DiffInfo:
         self.functionName = []
         self.className = ""
 
-    def getClass(self, className):
+    def get_class(self, className):
         self.className = className
 
-    def getFunction(self, functionName):
+    def get_function(self, functionName):
         self.functionName.append(functionName)
 
 
-def printDiffInfoList(diffInfoList):
+def print_diff_info_list(diffInfoList):
     for i in diffInfoList:
         print(i.commit)
         print(i.diff)
@@ -35,64 +35,23 @@ def printDiffInfoList(diffInfoList):
         print("####################################")
 
 
-def checkDir(dirName):
+def check_dir(dirName):
     if not os.path.exists(dirName):
         os.makedirs(dirName)
 
 
-def java_create(index, path, name, msg):
+def java_create(path, dirName, name, msg):
     # path = path or r'/tmp/pycharm_project_805/'
-    full_path = path + "/" + index + "/" + name + '.java'
-    checkDir(path + "/" + index)
-    file = open(full_path, 'w')
-    file.write(msg)
+    full_path = dirName + "/" + path + "/" + name + '.java'
+    check_dir(dirName + "/" + path)
+    with open(full_path, "w") as file:
+        file.write(msg)
 
 
-def create_java_file(index, hashCodeList, dirName, repo):
-    # for i in range(len(hashCodeList)):
-    #     javaCode = repo.git.cat_file('-p', hashCodeList[i])
-    #     java_create(index, dirName, i, javaCode)
-    i = 0
-    for hashCode in hashCodeList:
-        try:
-            javaCode = repo.git.cat_file('-p', hashCode)
-        except:
-            print(fileList[k])
-            print(hashCode)
-        else:
-            java_create(index, dirName, str(i), javaCode)
-        i = i + 1
-
-
-path = r'/mnt/data1/source_code'
-fileList = os.listdir(path)
-for i in fileList:
-    if i.endswith(".py") or i.endswith(".txt"):
-        fileList.remove(i)
-print fileList[21]
-for k in range(len(fileList)):
-    # for k in range(1):
-    fileName = fileList[k]
-    repoPath = path + '/' + fileName
-    repo = Repo(repoPath)
-    beforeHashCode = []
-    afterHashCode = []
-    commit_log = repo.git.log('-p', max_count=10)
-    log_list = commit_log.split("\n")
-    commit_log_list = []
-    log_length = len(log_list)
-    i = 0
-    tmpInfo = ""
-    diffInfoList = []
-    dirName = r'/tmp/pycharm_project_805/javaFile'
-
-    # while i < log_length:
-    #     info = str(log_list[i])
-    #     if info.startswith("commit") and tmpInfo != "":
-    #         commit_log_list.append(tmpInfo)
-    #         tmpInfo = ""
-    #     tmpInfo = tmpInfo + info + "\n"
-    #     i = i + 1
+def get_hash_code(commitInfo):
+    beforeHashCodeList = []
+    afterHashCodeList = []
+    log_list = commitInfo.split("\n")
     for i in range(len(log_list)):
         thisInfo = str(log_list[i])
         if thisInfo.startswith("diff") and thisInfo.endswith("java"):
@@ -107,12 +66,69 @@ for k in range(len(fileList)):
                 # print hashCode1
                 # print hashCode2
                 # print hashCode1
-                beforeHashCode.append(hashCode1)
-                afterHashCode.append(hashCode2)
+                beforeHashCodeList.append(hashCode1)
+                afterHashCodeList.append(hashCode2)
+    return beforeHashCodeList, afterHashCodeList
 
-    pathBefore = str(k) + "/before"
-    pathAfter = str(k) + "/after"
-    print("create start " + fileName)
-    create_java_file(pathBefore, beforeHashCode, dirName, repo)
-    create_java_file(pathAfter, afterHashCode, dirName, repo)
-    print("create end " + fileName)
+
+def create_java_file(path, hashCodeList, dirName, repo):
+    # for i in range(len(hashCodeList)):
+    #     javaCode = repo.git.cat_file('-p', hashCodeList[i])
+    #     java_create(index, dirName, i, javaCode)
+    i = 0
+    for hashCode in hashCodeList:
+        try:
+            javaCode = repo.git.cat_file('-p', hashCode)
+        except:
+            print(fileList[k])
+            print(hashCode)
+        else:
+            java_create(path, dirName, str(i), javaCode)
+        i = i + 1
+
+
+path = r'/mnt/data1/source_code'
+fileList = os.listdir(path)
+for i in fileList:
+    if i.endswith(".py") or i.endswith(".txt"):
+        fileList.remove(i)
+
+for k in range(len(fileList)):
+    print fileList[k] + " start " + str(k)
+    fileName = fileList[k]
+    repoPath = path + '/' + fileName
+    repo = Repo(repoPath)
+    commit_log = repo.git.log('-p', max_count=10)
+    log_list = commit_log.split("\n")
+
+    commit_log_list = []
+    log_length = len(log_list)
+    diffInfoList = []
+    dirName = r'/tmp/pycharm_project_136/javaFile'
+    i = 0
+    tmpInfo = ""
+    # print commit_log
+    while i < log_length:
+        # print "######################### " + str(i)
+        info = str(log_list[i])
+        if info.startswith("commit") and tmpInfo != "":
+            # print tmpInfo
+            commit_log_list.append(tmpInfo)
+            tmpInfo = ""
+        tmpInfo = tmpInfo + info + "\n"
+        i = i + 1
+    commit_log_list.append(tmpInfo)
+    t = 0
+    for index in range(len(commit_log_list)):
+        commitInfo = commit_log_list[index]
+        beforeHashCodeList, afterHashCodeList = get_hash_code(commitInfo)
+        pathBefore = fileName + "/commit" + str(t) + "/before"
+        pathAfter = fileName + "/commit" + str(t) + "/after"
+        print "create start " + fileName + " commit " + str(index)
+        if len(beforeHashCodeList) != 0 or len(afterHashCodeList) != 0:
+            create_java_file(pathBefore, beforeHashCodeList, dirName, repo)
+            create_java_file(pathAfter, afterHashCodeList, dirName, repo)
+            t = t + 1
+        print "create end " + fileName + " commit " + str(index)
+    print fileList[k] + " end " + str(k)
+print "ALL END"
